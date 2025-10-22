@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>나의 기분 일기 (Mood Diary)</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #fbf9ff;
+      --card: #ffffff;
+      --muted: #7c7c8a;
+      --accent-1: #ffd6e0;
+      --accent-2: #e6f7ff;
+      --accent-3: #fff1cc;
+      --accent-4: #e9fbe9;
+      --primary: #8b5cf6;
+      --shadow: 0 6px 20px rgba(11,12,30,0.06);
+      font-family: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background: linear-gradient(180deg, #fbf9ff 0%, #fffefe 100%);
+      color: #222;
+    }
+
+    .wrap{
+      max-width:1100px;
+      margin:28px auto;
+      padding:24px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .logo{
+      width:64px;
+      height:64px;
+      border-radius:14px;
+      background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+      box-shadow:var(--shadow);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      color:#6b21a8;
+      font-size:22px;
+    }
+    h1{ margin:0; font-size:20px; }
+    p.lead{ margin:4px 0 0; color:var(--muted); font-size:13px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 360px 1fr 260px;
+      gap:18px;
+      align-items:start;
+    }
+
+    /* LEFT CARD */
+    .card{
+      background:var(--card);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+
+    .field{ margin-bottom:14px; }
+    label.field-title{
+      font-weight:600;
+      display:block;
+      margin-bottom:8px;
+      font-size:14px;
+    }
+
+    input[type="date"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #eee;
+      font-size:14px;
+      background:linear-gradient(180deg,#fff,#fafafa);
+    }
+
+    .emotion{
+      margin-bottom:12px;
+      padding:12px;
+      border-radius:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      background:linear-gradient(180deg, rgba(250,250,255,1), rgba(255,255,255,0.9));
+    }
+
+    .emotion .name{ width:84px; font-weight:700; font-size:14px; }
+    .scale{ flex:1; display:flex; gap:6px; align-items:center; justify-content:flex-start; }
+
+    .scale .opt{
+      flex:1;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:600;
+      box-shadow: 0 2px 8px rgba(16,16,30,0.04);
+      border:1px solid rgba(30,30,60,0.06);
+      background:linear-gradient(180deg,#fff,#fbfdff);
+      cursor:pointer;
+      user-select:none;
+      transition:all .15s ease;
+      font-size:13px;
+      padding:8px 0;
+    }
+    .scale .opt:hover{
+      transform:translateY(-3px);
+      background:linear-gradient(180deg,#f7f2ff,#fff);
+    }
+    .scale .opt.selected{
+      transform:translateY(-4px);
+      background:linear-gradient(180deg,#ede2ff,#fff);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.3);
+      border-color:rgba(139,92,246,0.5);
+      color:#5b21b6;
+    }
+
+    .btn-row{ display:flex; gap:10px; margin-top:10px; }
+    button.primary{
+      background:linear-gradient(90deg,var(--primary), #6d28d9);
+      color:#fff;
+      border:none;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 8px 20px rgba(99,92,255,0.12);
+    }
+    button.ghost{
+      border:1px solid #eee;
+      background:white;
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    .hint{ color:var(--muted); font-size:13px; margin-top:8px; }
+
+    /* CHART */
+    .canvas-card{
+      background:linear-gradient(180deg,#ffffff,#fbfbff);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      align-items:stretch;
+    }
+    .chart-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .date-display{ font-weight:700; color:var(--primary); font-size:15px; }
+    .chart-wrap{
+      background: linear-gradient(180deg,#ffffff, #f9fbff);
+      border-radius:12px;
+      padding:16px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:420px;
+    }
+
+    .message{
+      padding:12px;
+      border-radius:10px;
+      background:#fff6f6;
+      color:#8b1f1f;
+      border:1px solid #ffdede;
+      font-weight:600;
+    }
+
+    /* RIGHT: breathing tips */
+    .breathe-card{
+      background:linear-gradient(180deg,#f9f9ff,#ffffff);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      line-height:1.6;
+      font-size:14px;
+    }
+    .breathe-card h3{
+      margin-top:0;
+      color:var(--primary);
+      font-size:16px;
+    }
+    .breathe-step{
+      background:#f8f5ff;
+      border-left:4px solid var(--primary);
+      border-radius:6px;
+      padding:8px 10px;
+      margin-top:8px;
+    }
+
+    footer.note{ margin-top:16px; color:var(--muted); font-size:13px; text-align:center; }
+
+    @media (max-width:980px){
+      .grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">MD</div>
+      <div>
+        <h1>나의 기분 일기</h1>
+        <p class="lead">감정을 기록하고 마음의 흐름을 관찰하세요 🌿</p>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <div class="field">
+          <label class="field-title">기록 날짜</label>
+          <input id="dateInput" type="date" />
+        </div>
+
+        <div class="field">
+          <label class="field-title">감정 선택</label>
+
+          <div class="emotion" data-emotion="Joy">
+            <div class="name">😊 기쁨</div>
+            <div class="scale" data-emotion="Joy"></div>
+          </div>
+
+          <div class="emotion" data-emotion="Anger">
+            <div class="name">😡 분노</div>
+            <div class="scale" data-emotion="Anger"></div>
+          </div>
+
+          <div class="emotion" data-emotion="Sadness">
+            <div class="name">😢 우울</div>
+            <div class="scale" data-emotion="Sadness"></div>
+          </div>
+
+          <div class="emotion" data-emotion="Anxiety">
+            <div class="name">😨 불안</div>
+            <div class="scale" data-emotion="Anxiety"></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="showBtn" class="primary">결과 보기</button>
+          <button id="resetBtn" class="ghost">초기화</button>
+        </div>
+      
+      </div>
+
+      <!-- CENTER -->
+      <div class="canvas-card" id="captureArea">
+        <div class="chart-header">
+          <div>
+            <div style="font-size:13px;color:var(--muted)">선택한 날짜</div>
+            <div id="displayDate" class="date-display">-</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--muted)">레이더 차트</div>
+            <div style="font-size:12px;color:var(--muted)">(스코어: 1~5)</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap" id="chartContainer">
+          <canvas id="moodChart" width="480" height="420"></canvas>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="downloadBtn" class="primary" style="background:linear-gradient(90deg,#06b6d4,#8b5cf6);">이미지로 저장</button>
+        </div>
+
+        <div id="msg" style="display:none;" class="message">모든 항목을 선택한 후 결과를 보세요.</div>
+      </div>
+
+      <!-- RIGHT -->
+      <aside class="breathe-card">
+        <h3>🧘 마음 건강을 지키는 호흡법</h3>
+        <p>스트레스나 불안이 느껴질 때, 아래 방법으로 천천히 호흡을 조절해보세요.</p>
+        <div class="breathe-step">1️⃣ 4초 동안 천천히 들이마시기</div>
+        <div class="breathe-step">2️⃣ 4초 동안 숨 멈추기</div>
+        <div class="breathe-step">3️⃣ 4초 동안 천천히 내쉬기</div>
+        <div class="breathe-step">4️⃣ 3회 반복하며 몸의 긴장을 풀기</div>
+        <p style="margin-top:10px;color:var(--muted);font-size:13px;">💡 하루 3분, 꾸준히 실천해보세요.</p>
+      </aside>
+    </main>
+
+    
+  </div>
+
+  <script>
+    // 날짜 초기값
+    const dateInput = document.getElementById('dateInput');
+    const displayDate = document.getElementById('displayDate');
+    const today = new Date();
+    const toISO = d => d.toISOString().split('T')[0];
+    dateInput.value = toISO(today);
+    displayDate.textContent = dateInput.value;
+    dateInput.addEventListener('change', ()=> displayDate.textContent = dateInput.value);
+
+    // 감정 데이터
+    const emotions = [
+      {key:'Joy', label:'기쁨'},
+      {key:'Anger', label:'분노'},
+      {key:'Sadness', label:'우울'},
+      {key:'Anxiety', label:'불안'},
+    ];
+
+    const levels = ["전혀 아님","약간","보통","많이","최고"];
+
+    // 감정 선택 UI 생성
+    document.querySelectorAll('.scale').forEach(scaleEl=>{
+      const emo = scaleEl.dataset.emotion;
+      levels.forEach((label,i)=>{
+        const opt = document.createElement('div');
+        opt.className='opt';
+        opt.dataset.val=i+1;
+        opt.dataset.emo=emo;
+        opt.textContent=label;
+        opt.addEventListener('click',(e)=>{
+          const parent=e.currentTarget.parentElement;
+          parent.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+          e.currentTarget.classList.add('selected');
+        });
+        scaleEl.appendChild(opt);
+      });
+    });
+
+    // 선택값 읽기
+    function getSelectedValues(){
+      const values={}; let allSet=true;
+      emotions.forEach(em=>{
+        const sel=document.querySelector('.scale[data-emotion="'+em.key+'"] .opt.selected');
+        values[em.key]=sel?Number(sel.dataset.val):null;
+        if(values[em.key]===null) allSet=false;
+      });
+      return {values, allSet};
+    }
+
+    // 차트 생성
+    const ctx=document.getElementById('moodChart').getContext('2d');
+    const chartCfg={
+      type:'radar',
+      data:{
+        labels:['기쁨','분노','우울','불안'],
+        datasets:[{
+          label:'감정 스코어',
+          data:[0,0,0,0],
+          fill:true,
+          backgroundColor:'rgba(139,92,246,0.12)',
+          borderColor:'rgba(139,92,246,0.9)',
+          borderWidth:2,
+          pointRadius:6,
+          pointBackgroundColor:['#ffd6e0','#e6f7ff','#fff1cc','#e9fbe9']
+        }]
+      },
+      options:{
+        scales:{r:{
+          min:0,max:5,
+          ticks:{stepSize:1,backdropColor:'rgba(255,255,255,0.7)'},
+          pointLabels:{font:{size:13}}
+        }},
+        plugins:{legend:{display:false}},
+        responsive:true,
+        maintainAspectRatio:false
+      }
+    };
+    const moodChart=new Chart(ctx,chartCfg);
+
+    const showBtn=document.getElementById('showBtn');
+    const msg=document.getElementById('msg');
+    showBtn.addEventListener('click',()=>{
+      const {values,allSet}=getSelectedValues();
+      if(!allSet){
+        msg.style.display='block';
+        setTimeout(()=>msg.style.display='none',2600);
+        return;
+      }
+      const arr=[values.Joy,values.Anger,values.Sadness,values.Anxiety];
+      moodChart.data.datasets[0].data=arr;
+      moodChart.update();
+    });
+
+    const resetBtn=document.getElementById('resetBtn');
+    resetBtn.addEventListener('click',()=>{
+      document.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+      moodChart.data.datasets[0].data=[0,0,0,0];
+      moodChart.update();
+      displayDate.textContent=dateInput.value;
+    });
+
+    const downloadBtn=document.getElementById('downloadBtn');
+    const captureArea=document.getElementById('captureArea');
+    downloadBtn.addEventListener('click',async()=>{
+      const {values,allSet}=getSelectedValues();
+      if(!allSet){
+        msg.style.display='block';
+        setTimeout(()=>msg.style.display='none',2600);
+        return;
+      }
+      downloadBtn.disabled=true;
+      downloadBtn.textContent='이미지 생성 중...';
+      try{
+        const canvas=await html2canvas(captureArea,{scale:2,backgroundColor:null});
+        const link=document.createElement('a');
+        link.download=`mood-${dateInput.value}.png`;
+        link.href=canvas.toDataURL();
+        link.click();
+      }catch(e){alert('오류 발생');}
+      finally{
+        downloadBtn.disabled=false;
+        downloadBtn.textContent='이미지로 저장';
+      }
+    });
+  </script>
+</body>
+</html>
